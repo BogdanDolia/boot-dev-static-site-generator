@@ -31,10 +31,10 @@ class HTMLNode:
         if not isinstance(other, HTMLNode):
             return False
         return (
-            self.tag == other.tag
-            and self.value == other.value
-            and self.children == other.children
-            and self.props == other.props
+                self.tag == other.tag
+                and self.value == other.value
+                and self.children == other.children
+                and self.props == other.props
         )
 
 
@@ -64,9 +64,9 @@ class LeafNode(HTMLNode):
         if not isinstance(other, LeafNode):
             return False
         return (
-            self.tag == other.tag
-            and self.value == other.value
-            and self.props == other.props
+                self.tag == other.tag
+                and self.value == other.value
+                and self.props == other.props
         )
 
     @staticmethod

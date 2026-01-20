@@ -1,8 +1,9 @@
+import re
 from textnode import TextNode, TextType
 
 
 def split_nodes_delimiter(
-    old_nodes: list[TextNode], delimiter: str, text_type: TextType
+        old_nodes: list[TextNode], delimiter: str, text_type: TextType
 ) -> list[TextNode]:
     """Split the nodes into a list of nodes delimited by the delimiter."""
     new_nodes = []
@@ -19,3 +20,8 @@ def split_nodes_delimiter(
                 else:
                     new_nodes.append(TextNode(part, text_type))
     return new_nodes
+
+
+def extract_markdown_images(text: str) -> list[tuple[str, str]]:
+    """Extract alt text and URL of markdown images from text."""
+    return re.findall(r"!\[(.*?)\]\((.*?)\)", text)

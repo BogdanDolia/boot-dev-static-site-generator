@@ -1,5 +1,5 @@
 from textnode import TextNode, TextType
-from helpers import split_nodes_delimiter
+from helpers import split_nodes_delimiter, extract_markdown_images
 import unittest
 
 
@@ -120,6 +120,33 @@ class TestHelpers(unittest.TestCase):
                 TextNode("code2", TextType.CODE),
                 TextNode(" text", TextType.TEXT),
             ],
+        )
+
+    def test_extract_markdown_images(self):
+        """Test the extract_markdown_images function."""
+        text = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
+        matches = extract_markdown_images(text)
+        self.assertEqual(
+            matches,
+            [
+                ("rick roll", "https://i.imgur.com/aKaOqIh.gif"),
+                ("obi wan", "https://i.imgur.com/fJRm4Vk.jpeg"),
+            ],
+        )
+
+    def test_extract_markdown_images_no_images(self):
+        """Test with text containing no images."""
+        text = "This is text with no images."
+        matches = extract_markdown_images(text)
+        self.assertEqual(matches, [])
+
+    def test_extract_markdown_images_with_links(self):
+        """Test that it doesn't extract normal links as images."""
+        text = "This is a [link](https://www.google.com) and an ![image](https://i.imgur.com/z39yRDC.png)"
+        matches = extract_markdown_images(text)
+        self.assertEqual(
+            matches,
+            [("image", "https://i.imgur.com/z39yRDC.png")],
         )
 
 

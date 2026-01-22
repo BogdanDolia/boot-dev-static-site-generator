@@ -1,5 +1,12 @@
 from textnode import TextNode, TextType
-from helpers import split_nodes_delimiter, extract_markdown_images, extract_markdown_links
+from helpers import (
+    split_nodes_delimiter,
+    extract_markdown_images,
+    extract_markdown_links,
+    split_nodes_image,
+    split_nodes_link,
+    text_to_textnodes,
+)
 import unittest
 
 
@@ -189,6 +196,188 @@ class TestHelpers(unittest.TestCase):
                 TextNode("text with ", TextType.TEXT),
                 TextNode("code", TextType.CODE),
             ],
+        )
+
+    def test_split_images_boot_dev(self):
+        node = TextNode(
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png)",
+            TextType.TEXT,
+        )
+        new_nodes = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with an ", TextType.TEXT),
+                TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+                TextNode(" and another ", TextType.TEXT),
+                TextNode(
+                    "second image", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png"
+                ),
+            ],
+            new_nodes,
+        )
+
+    def test_split_nodes_image(self):
+        """Test the split_nodes_image function."""
+        node = TextNode(
+            "This is text with an image ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)",
+            TextType.TEXT,
+        )
+        new_nodes = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with an image ", TextType.TEXT),
+                TextNode("rick roll", TextType.IMAGE, "https://i.imgur.com/aKaOqIh.gif"),
+                TextNode(" and ", TextType.TEXT),
+                TextNode("obi wan", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"),
+            ],
+            new_nodes,
+        )
+
+    def test_split_nodes_image_edge_cases(self):
+        """Test split_nodes_image with edge cases."""
+        node = TextNode(
+            "![image](https://example.com/image.png) is at the start",
+            TextType.TEXT,
+        )
+        new_nodes = split_nodes_image([node])
+        self.assertEqual(
+            new_nodes,
+            [
+                TextNode("image", TextType.IMAGE, "https://example.com/image.png"),
+                TextNode(" is at the start", TextType.TEXT),
+            ],
+        )
+
+        node2 = TextNode(
+            "image is at the end ![end](https://example.com/end.png)",
+            TextType.TEXT,
+        )
+        new_nodes2 = split_nodes_image([node2])
+        self.assertEqual(
+            new_nodes2,
+            [
+                TextNode("image is at the end ", TextType.TEXT),
+                TextNode("end", TextType.IMAGE, "https://example.com/end.png"),
+            ],
+        )
+
+    def test_split_nodes_link(self):
+        """Test the split_nodes_link function."""
+        node = TextNode(
+            "This is text with a link [to boot dev](https://www.boot.dev) and [to google](https://www.google.com)",
+            TextType.TEXT,
+        )
+        new_nodes = split_nodes_link([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with a link ", TextType.TEXT),
+                TextNode("to boot dev", TextType.LINK, "https://www.boot.dev"),
+                TextNode(" and ", TextType.TEXT),
+                TextNode("to google", TextType.LINK, "https://www.google.com"),
+            ],
+            new_nodes,
+        )
+
+    def test_split_nodes_image_preserves_other_nodes(self):
+        """Test that split_nodes_image preserves other node types."""
+        node1 = TextNode("Bold text", TextType.BOLD)
+        node2 = TextNode("Image ![img](url)", TextType.TEXT)
+        new_nodes = split_nodes_image([node1, node2])
+        self.assertEqual(
+            new_nodes,
+            [
+                node1,
+                TextNode("Image ", TextType.TEXT),
+                TextNode("img", TextType.IMAGE, "url"),
+            ],
+        )
+
+    def test_split_nodes_link_preserves_other_nodes(self):
+        """Test that split_nodes_link preserves other node types."""
+        node1 = TextNode("Bold text", TextType.BOLD)
+        node2 = TextNode("Link [link](url)", TextType.TEXT)
+        new_nodes = split_nodes_link([node1, node2])
+        self.assertEqual(
+            new_nodes,
+            [
+                node1,
+                TextNode("Link ", TextType.TEXT),
+                TextNode("link", TextType.LINK, "url"),
+            ],
+        )
+
+    def test_text_to_textnodes(self):
+        text = "This is **text** with an *italic* word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
+        nodes = text_to_textnodes(text)
+        self.assertListEqual(
+            [
+                TextNode("This is ", TextType.TEXT),
+                TextNode("text", TextType.BOLD),
+                TextNode(" with an ", TextType.TEXT),
+                TextNode("italic", TextType.ITALIC),
+                TextNode(" word and a ", TextType.TEXT),
+                TextNode("code block", TextType.CODE),
+                TextNode(" and an ", TextType.TEXT),
+                TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"),
+                TextNode(" and a ", TextType.TEXT),
+                TextNode("link", TextType.LINK, "https://boot.dev"),
+            ],
+            nodes,
+        )
+
+    def test_text_to_textnodes_order_code_protection(self):
+        """Ensure code blocks protect their content from other delimiters."""
+        text = "Text with `**not bold**` and `*not italic*`"
+        nodes = text_to_textnodes(text)
+        self.assertListEqual(
+            [
+                TextNode("Text with ", TextType.TEXT),
+                TextNode("**not bold**", TextType.CODE),
+                TextNode(" and ", TextType.TEXT),
+                TextNode("*not italic*", TextType.CODE),
+            ],
+            nodes,
+        )
+
+    def test_text_to_textnodes_order_bold_before_italic(self):
+        """Ensure bold is processed before italic to avoid conflict with **."""
+        text = "This is **bold** text"
+        nodes = text_to_textnodes(text)
+        self.assertListEqual(
+            [
+                TextNode("This is ", TextType.TEXT),
+                TextNode("bold", TextType.BOLD),
+                TextNode(" text", TextType.TEXT),
+            ],
+            nodes,
+        )
+
+    def test_text_to_textnodes_order_link_protection(self):
+        """Ensure links/images don't get split by earlier text delimiters incorrectly, 
+        or rather how the current order handles them.
+        In current order (Bold then Link), **[link](url)** becomes BOLD node.
+        If Link was first, it would be LINK node.
+        """
+        text = "This is **[link](url)**"
+        nodes = text_to_textnodes(text)
+        self.assertListEqual(
+            [
+                TextNode("This is ", TextType.TEXT),
+                TextNode("[link](url)", TextType.BOLD),
+            ],
+            nodes,
+        )
+
+    def test_text_to_textnodes_order_italic_vs_link(self):
+        """Test italic vs link order."""
+        text = "This is *[link](url)*"
+        nodes = text_to_textnodes(text)
+        self.assertListEqual(
+            [
+                TextNode("This is ", TextType.TEXT),
+                TextNode("[link](url)", TextType.ITALIC),
+            ],
+            nodes,
         )
 
 

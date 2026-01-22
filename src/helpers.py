@@ -19,9 +19,16 @@ def split_nodes_delimiter(
                     new_nodes.append(TextNode(part, TextType.TEXT))
                 else:
                     new_nodes.append(TextNode(part, text_type))
+        else:
+            new_nodes.append(node)
     return new_nodes
 
 
 def extract_markdown_images(text: str) -> list[tuple[str, str]]:
-    """Extract alt text and URL of markdown images from text."""
-    return re.findall(r"!\[(.*?)\]\((.*?)\)", text)
+    """Extract alt text and URL of Markdown images from text."""
+    return re.findall(r"!\[(.*?)]\((.*?)\)", text)
+
+
+def extract_markdown_links(text: str) -> list[tuple[str, str]]:
+    """Extract Markdown links from text."""
+    return re.findall(r"(?<!!)\[(.*?)]\((.*?)\)", text)

@@ -1,10 +1,10 @@
 from textnode import TextNode, TextType
-from helpers import split_nodes_delimiter, extract_markdown_images
+from helpers import split_nodes_delimiter, extract_markdown_images, extract_markdown_links
 import unittest
 
 
 class TestHelpers(unittest.TestCase):
-    """Test the helpers module."""
+    """Test the helpers' module."""
 
     def test_split_nodes_delimiter(self):
         """Test the split_nodes_delimiter function."""
@@ -17,6 +17,7 @@ class TestHelpers(unittest.TestCase):
                 TextNode("This is text with a ", TextType.TEXT),
                 TextNode("code block", TextType.CODE),
                 TextNode(" word", TextType.TEXT),
+                node2,
             ],
         )
 
@@ -147,6 +148,47 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(
             matches,
             [("image", "https://i.imgur.com/z39yRDC.png")],
+        )
+
+    def test_extract_markdown_links(self):
+        """Test the extract_markdown_links function."""
+        text = "This is text with a [link](https://www.google.com) and [another](https://www.example.com)"
+        matches = extract_markdown_links(text)
+        self.assertEqual(
+            matches,
+            [
+                ("link", "https://www.google.com"),
+                ("another", "https://www.example.com"),
+            ],
+        )
+
+    def test_extract_markdown_links_no_links(self):
+        """Test with text containing no links."""
+        text = "This is text with no links."
+        matches = extract_markdown_links(text)
+        self.assertEqual(matches, [])
+
+    def test_extract_markdown_links_with_images(self):
+        """Test that it doesn't extract images as links."""
+        text = "This is a [link](https://www.google.com) and an ![image](https://i.imgur.com/z39yRDC.png)"
+        matches = extract_markdown_links(text)
+        self.assertEqual(
+            matches,
+            [("link", "https://www.google.com")],
+        )
+
+    def test_split_nodes_delimiter_preserves_other_types(self):
+        """Test that non-TEXT nodes are preserved."""
+        node1 = TextNode("Already bold", TextType.BOLD)
+        node2 = TextNode("text with `code`", TextType.TEXT)
+        new_nodes = split_nodes_delimiter([node1, node2], "`", TextType.CODE)
+        self.assertEqual(
+            new_nodes,
+            [
+                node1,
+                TextNode("text with ", TextType.TEXT),
+                TextNode("code", TextType.CODE),
+            ],
         )
 
 

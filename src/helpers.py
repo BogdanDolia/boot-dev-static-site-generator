@@ -1,6 +1,7 @@
 import re
 from enum import Enum
 from textnode import TextNode, TextType
+from htmlnode import HTMLNode, ParentNode, LeafNode
 
 
 class BlockType(Enum):
@@ -102,6 +103,7 @@ def text_to_textnodes(text: str) -> list[TextNode]:
     nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
     nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
     nodes = split_nodes_delimiter(nodes, "*", TextType.ITALIC)
+    nodes = split_nodes_delimiter(nodes, "_", TextType.ITALIC)
     nodes = split_nodes_image(nodes)
     nodes = split_nodes_link(nodes)
     return nodes
@@ -109,7 +111,13 @@ def text_to_textnodes(text: str) -> list[TextNode]:
 
 def markdown_to_blocks(markdown: str) -> list[str]:
     """Split a Markdown document into block strings."""
-    blocks = markdown.split("\n\n")
+    # First normalize: convert lines with only whitespace to truly empty lines
+    lines = markdown.split("\n")
+    normalized_lines = [line if line.strip() else "" for line in lines]
+    normalized = "\n".join(normalized_lines)
+
+    # Now split by double newlines
+    blocks = normalized.split("\n\n")
     result = []
     for block in blocks:
         stripped = block.strip()
@@ -133,3 +141,78 @@ def block_to_block_type(block: str) -> BlockType:
     if all(line.startswith(f"{i}. ") for i, line in enumerate(lines, start=1)):
         return BlockType.ORDERED_LIST
     return BlockType.PARAGRAPH
+
+
+def text_to_children(text: str) -> list[LeafNode]:
+    """Convert a string of text with inline markdown into a list of HTMLNodes."""
+    text_nodes = text_to_textnodes(text)
+    return [LeafNode.text_node_to_html_node(node) for node in text_nodes]
+
+
+def markdown_to_html_node(markdown: str) -> HTMLNode:
+    """Convert a full markdown document into a single parent HTMLNode."""
+    blocks = markdown_to_blocks(markdown)
+    children = []
+
+    for block in blocks:
+        block_type = block_to_block_type(block)
+
+        if block_type == BlockType.HEADING:
+            # Extract heading level and text
+            match = re.match(r"^(#{1,6}) (.+)", block)
+            level = len(match.group(1))
+            text = match.group(2)
+            children.append(ParentNode(f"h{level}", text_to_children(text)))
+
+        elif block_type == BlockType.CODE:
+            # Extract code content (remove surrounding ```)
+            code_text = block[3:-3]
+            # Remove leading/trailing newlines and strip each line
+            lines = code_text.split("\n")
+            # Remove empty first/last lines
+            if lines and lines[0].strip() == "":
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "":
+                lines = lines[:-1]
+            # Strip leading indentation from each line
+            stripped_lines = [line.strip() for line in lines]
+            code_text = "\n".join(stripped_lines)
+            if stripped_lines:  # Add trailing newline if there's content
+                code_text += "\n"
+            # Code blocks don't parse inline markdown
+            code_node = LeafNode("code", code_text)
+            children.append(ParentNode("pre", [code_node]))
+
+        elif block_type == BlockType.QUOTE:
+            # Remove leading ">" from each line
+            lines = block.split("\n")
+            quote_text = "\n".join(line[1:].strip() if line.startswith("> ") else line[1:] for line in lines)
+            children.append(ParentNode("blockquote", text_to_children(quote_text)))
+
+        elif block_type == BlockType.UNORDERED_LIST:
+            # Split into list items
+            lines = block.split("\n")
+            list_items = []
+            for line in lines:
+                # Remove "- " or "* " prefix
+                item_text = line[2:]
+                list_items.append(ParentNode("li", text_to_children(item_text)))
+            children.append(ParentNode("ul", list_items))
+
+        elif block_type == BlockType.ORDERED_LIST:
+            # Split into list items
+            lines = block.split("\n")
+            list_items = []
+            for line in lines:
+                # Remove "N. " prefix
+                item_text = re.sub(r"^\d+\. ", "", line)
+                list_items.append(ParentNode("li", text_to_children(item_text)))
+            children.append(ParentNode("ol", list_items))
+
+        else:  # PARAGRAPH
+            # Join lines within the paragraph with spaces, stripping each line
+            lines = [line.strip() for line in block.split("\n")]
+            paragraph_text = " ".join(lines)
+            children.append(ParentNode("p", text_to_children(paragraph_text)))
+
+    return ParentNode("div", children)

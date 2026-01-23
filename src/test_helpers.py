@@ -5,7 +5,7 @@ from helpers import (
     extract_markdown_links,
     split_nodes_image,
     split_nodes_link,
-    text_to_textnodes, markdown_to_blocks,
+    text_to_textnodes, markdown_to_blocks, block_to_block_type, BlockType,
 )
 import unittest
 
@@ -399,6 +399,58 @@ This is the same paragraph on a new line
                 "- This is a list\n- with items",
             ],
         )
+
+    def test_block_to_block_type_heading_levels(self):
+        cases = [
+            ("# Heading", BlockType.HEADING),
+            ("## Heading", BlockType.HEADING),
+            ("###### Heading", BlockType.HEADING),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual(block_to_block_type(text), expected)
+
+    def test_block_to_block_type_heading_requires_space(self):
+        self.assertEqual(block_to_block_type("#Heading"), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_heading_max_level(self):
+        self.assertEqual(block_to_block_type("####### Heading"), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_code_block(self):
+        text = "```\ncode here\n```"
+        self.assertEqual(block_to_block_type(text), BlockType.CODE)
+
+    def test_block_to_block_type_code_block_requires_newline(self):
+        text = "```code here\n```"
+        self.assertEqual(block_to_block_type(text), BlockType.CODE)
+
+    def test_block_to_block_type_quote_block(self):
+        text = "> line one\n> line two"
+        self.assertEqual(block_to_block_type(text), BlockType.QUOTE)
+
+    def test_block_to_block_type_quote_requires_space(self):
+        text = ">line one\n> line two"
+        self.assertEqual(block_to_block_type(text), BlockType.QUOTE)
+
+    def test_block_to_block_type_unordered_list(self):
+        text = "- item one\n- item two"
+        self.assertEqual(block_to_block_type(text), BlockType.UNORDERED_LIST)
+
+    def test_block_to_block_type_unordered_list_requires_dash(self):
+        text = "* item one\n- item two"
+        self.assertEqual(block_to_block_type(text), BlockType.UNORDERED_LIST)
+
+    def test_block_to_block_type_ordered_list(self):
+        text = "1. item one\n2. item two\n3. item three"
+        self.assertEqual(block_to_block_type(text), BlockType.ORDERED_LIST)
+
+    def test_block_to_block_type_ordered_list_requires_sequence(self):
+        text = "1. item one\n3. item two"
+        self.assertEqual(block_to_block_type(text), BlockType.PARAGRAPH)
+
+    def test_block_to_block_type_paragraph_fallback(self):
+        text = "Just a normal paragraph\nwith two lines"
+        self.assertEqual(block_to_block_type(text), BlockType.PARAGRAPH)
 
 
 if __name__ == "__main__":

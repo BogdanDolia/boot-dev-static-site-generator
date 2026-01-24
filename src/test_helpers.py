@@ -484,6 +484,20 @@ This is the same paragraph on a new line
             "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
         )
 
+    def test_extract_title(self):
+        from helpers import extract_title
+        markdown = "# Hello"
+        self.assertEqual(extract_title(markdown), "Hello")
+
+        markdown = "#  Hello   "
+        self.assertEqual(extract_title(markdown), "Hello")
+
+        markdown = "## Hello\n# World"
+        self.assertEqual(extract_title(markdown), "World")
+
+        with self.assertRaises(ValueError):
+            extract_title("Hello")
+
 
 if __name__ == "__main__":
     unittest.main()

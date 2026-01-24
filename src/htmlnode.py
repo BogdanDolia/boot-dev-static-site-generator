@@ -80,7 +80,7 @@ class LeafNode(HTMLNode):
             TextType.ITALIC: ("i", text_node.text, None),
             TextType.CODE: ("code", text_node.text, None),
             TextType.LINK: ("a", text_node.text, {"href": text_node.url}),
-            TextType.IMAGE: ("img", None, {"src": text_node.url}),
+            TextType.IMAGE: ("img", "", {"src": text_node.url, "alt": text_node.text}),
         }
 
         if text_node.text_type not in type_mapping:

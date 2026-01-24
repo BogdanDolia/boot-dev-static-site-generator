@@ -136,8 +136,8 @@ class TestHTMLNode(unittest.TestCase):
         node = TextNode("alt text", TextType.IMAGE, "https://example.com/image.png")
         html_node = LeafNode.text_node_to_html_node(node)
         self.assertEqual(html_node.tag, "img")
-        self.assertEqual(html_node.value, None)
-        self.assertEqual(html_node.props, {"src": "https://example.com/image.png"})
+        self.assertEqual(html_node.value, "")
+        self.assertEqual(html_node.props, {"src": "https://example.com/image.png", "alt": "alt text"})
 
     def test_text_node_empty_string(self):
         """Test the conversion of a text node with empty string."""
